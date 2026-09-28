@@ -1,0 +1,62 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Release version tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Strip machine-specific local java path
+        run: |
+          sed -i '/org.gradle.java.home/d' gradle.properties || true
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Prepare APK Asset
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk BadHabitControl-${{ github.ref_name || inputs.version_tag }}.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: BadHabitControl-*.apk
+          tag_name: ${{ github.ref_name || inputs.version_tag }}
+          name: Bad Habit Control ${{ github.ref_name || inputs.version_tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

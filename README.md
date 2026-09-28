@@ -2,6 +2,10 @@
 
 A calm, private, offline-first native Android application to help manage two specific habits (**Cigarettes** and **Masturbation**) through urge-wave delay timers and clean streak tracking.
 
+## Download
+
+Get the latest installable Android APK from [**GitHub Releases**](https://github.com/Naman-Dua/badhabitcontrolapp/releases/latest).
+
 ## Core Features
 
 - **Dual Independent Habit Tracking**: Independent streaks, history, and records for Cigarettes and Masturbation.
