@@ -49,6 +49,7 @@ class HabitRepository(private val context: Context) {
                 outcome = UrgeOutcome.RELAPSE.name
             )
         )
+        com.example.badhabitcontrol.widget.HabitGlanceWidget.notifyUpdate(context)
     }
 
     suspend fun recordUrgeOutcome(
@@ -81,6 +82,38 @@ class HabitRepository(private val context: Context) {
             UrgeOutcome.STILL_URGE -> {
                 // STILL_URGE does NOT break streak; does not force relapse
             }
+        }
+        com.example.badhabitcontrol.widget.HabitGlanceWidget.notifyUpdate(context)
+    }
+
+    fun getFinancialConfig(habitId: Long): Flow<com.example.badhabitcontrol.data.model.FinancialConfig> = context.dataStore.data.map { prefs ->
+        val enabledKey = booleanPreferencesKey("habit_${habitId}_financial_enabled")
+        val costKey = androidx.datastore.preferences.core.doublePreferencesKey("habit_${habitId}_daily_cost")
+        val currencyKey = androidx.datastore.preferences.core.stringPreferencesKey("habit_${habitId}_currency")
+        val unitNameKey = androidx.datastore.preferences.core.stringPreferencesKey("habit_${habitId}_unit_name")
+        val unitsKey = androidx.datastore.preferences.core.doublePreferencesKey("habit_${habitId}_units_per_day")
+
+        val defaultEnabled = if (habitId == 1L) true else false
+        val defaultCost = if (habitId == 1L) 10.0 else 0.0
+        val defaultUnits = if (habitId == 1L) 15.0 else 0.0
+        val defaultUnitName = if (habitId == 1L) "cigarettes" else "items"
+
+        com.example.badhabitcontrol.data.model.FinancialConfig(
+            enabled = prefs[enabledKey] ?: defaultEnabled,
+            dailyCost = prefs[costKey] ?: defaultCost,
+            currencySymbol = prefs[currencyKey] ?: "$",
+            unitName = prefs[unitNameKey] ?: defaultUnitName,
+            unitsPerDay = prefs[unitsKey] ?: defaultUnits
+        )
+    }
+
+    suspend fun setFinancialConfig(habitId: Long, config: com.example.badhabitcontrol.data.model.FinancialConfig) {
+        context.dataStore.edit { prefs ->
+            prefs[booleanPreferencesKey("habit_${habitId}_financial_enabled")] = config.enabled
+            prefs[androidx.datastore.preferences.core.doublePreferencesKey("habit_${habitId}_daily_cost")] = config.dailyCost
+            prefs[androidx.datastore.preferences.core.stringPreferencesKey("habit_${habitId}_currency")] = config.currencySymbol
+            prefs[androidx.datastore.preferences.core.stringPreferencesKey("habit_${habitId}_unit_name")] = config.unitName
+            prefs[androidx.datastore.preferences.core.doublePreferencesKey("habit_${habitId}_units_per_day")] = config.unitsPerDay
         }
     }
 

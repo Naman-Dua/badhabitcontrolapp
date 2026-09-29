@@ -169,6 +169,16 @@ private fun HabitSummaryCard(
             fontSize = 12.sp
         )
 
+        cardState.financialText?.let { finText ->
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "• $finText •",
+                color = StatusClean,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedButton(

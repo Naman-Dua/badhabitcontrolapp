@@ -31,7 +31,8 @@ import java.time.format.DateTimeFormatter
 data class HabitCardState(
     val habit: Habit,
     val currentStreak: Int,
-    val sinceDateText: String
+    val sinceDateText: String,
+    val financialText: String? = null
 )
 
 data class HomeUiState(
@@ -47,8 +48,10 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
     val uiState: StateFlow<HomeUiState> = combine(
         repository.getAllHabits(),
         repository.getDayRecords(1L),
-        repository.getDayRecords(2L)
-    ) { habits, cigRecords, mastRecords ->
+        repository.getDayRecords(2L),
+        repository.getFinancialConfig(1L),
+        repository.getFinancialConfig(2L)
+    ) { habits, cigRecords, mastRecords, cigFin, mastFin ->
         val cigHabit = habits.find { it.id == 1L } ?: Habit(1L, "Cigarettes", System.currentTimeMillis())
         val mastHabit = habits.find { it.id == 2L } ?: Habit(2L, "Masturbation", System.currentTimeMillis())
 
@@ -73,13 +76,27 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
         val cigStreak = StreakCalculator.calculateCurrentStreak(cigCreated, cigMap, today)
         val mastStreak = StreakCalculator.calculateCurrentStreak(mastCreated, mastMap, today)
 
+        val cigCleanDays = StreakCalculator.calculateTotalCleanDays(cigMap)
+        val mastCleanDays = StreakCalculator.calculateTotalCleanDays(mastMap)
+
+        val cigSavings = com.example.badhabitcontrol.domain.calculator.SavingsCalculator.computeSavings(cigFin, cigCleanDays, cigStreak)
+        val mastSavings = com.example.badhabitcontrol.domain.calculator.SavingsCalculator.computeSavings(mastFin, mastCleanDays, mastStreak)
+
         val formatter = DateTimeFormatter.ofPattern("d MMMM, yyyy")
         val cigSince = cigCreated.format(formatter)
         val mastSince = mastCreated.format(formatter)
 
+        val cigFinText = if (cigFin.enabled && cigSavings.totalSaved > 0) {
+            String.format(java.util.Locale.getDefault(), "%s%.2f saved", cigFin.currencySymbol, cigSavings.totalSaved)
+        } else null
+
+        val mastFinText = if (mastFin.enabled && mastSavings.totalSaved > 0) {
+            String.format(java.util.Locale.getDefault(), "%s%.2f saved", mastFin.currencySymbol, mastSavings.totalSaved)
+        } else null
+
         HomeUiState(
-            cigarettes = HabitCardState(cigHabit, cigStreak, cigSince),
-            masturbation = HabitCardState(mastHabit, mastStreak, mastSince),
+            cigarettes = HabitCardState(cigHabit, cigStreak, cigSince, cigFinText),
+            masturbation = HabitCardState(mastHabit, mastStreak, mastSince, mastFinText),
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
@@ -91,6 +108,9 @@ data class HabitDetailUiState(
     val sinceText: String = "",
     val recordsByDate: Map<LocalDate, DayStatus> = emptyMap(),
     val events: List<UrgeEvent> = emptyList(),
+    val heatmapData: com.example.badhabitcontrol.data.model.HeatmapData = com.example.badhabitcontrol.data.model.HeatmapData(),
+    val financialConfig: com.example.badhabitcontrol.data.model.FinancialConfig = com.example.badhabitcontrol.data.model.FinancialConfig(),
+    val financialStats: com.example.badhabitcontrol.data.model.FinancialStats = com.example.badhabitcontrol.data.model.FinancialStats(),
     val isLoading: Boolean = true
 )
 
@@ -104,8 +124,9 @@ class HabitViewModel(
     val uiState: StateFlow<HabitDetailUiState> = combine(
         repository.getHabitById(habitId),
         repository.getDayRecords(habitId),
-        repository.getUrgeEvents(habitId)
-    ) { habit, dayRecords, events ->
+        repository.getUrgeEvents(habitId),
+        repository.getFinancialConfig(habitId)
+    ) { habit, dayRecords, events, finConfig ->
         val effectiveHabit = habit ?: Habit(
             habitId,
             if (habitId == 1L) "Cigarettes" else "Masturbation",
@@ -123,6 +144,12 @@ class HabitViewModel(
 
         val stats = StreakCalculator.computeStats(habitCreated, dayRecords, events, today)
         val sinceText = habitCreated.format(DateTimeFormatter.ofPattern("d MMMM, yyyy"))
+        val heatmapData = com.example.badhabitcontrol.domain.analytics.HeatmapCalculator.computeHeatmap(events)
+        val finStats = com.example.badhabitcontrol.domain.calculator.SavingsCalculator.computeSavings(
+            finConfig,
+            stats.totalCleanDays,
+            stats.currentStreak
+        )
 
         HabitDetailUiState(
             habit = effectiveHabit,
@@ -130,9 +157,18 @@ class HabitViewModel(
             sinceText = sinceText,
             recordsByDate = recordMap,
             events = events,
+            heatmapData = heatmapData,
+            financialConfig = finConfig,
+            financialStats = finStats,
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HabitDetailUiState())
+
+    fun updateFinancialConfig(config: com.example.badhabitcontrol.data.model.FinancialConfig) {
+        viewModelScope.launch {
+            repository.setFinancialConfig(habitId, config)
+        }
+    }
 
     fun recordRelapse() {
         viewModelScope.launch {
@@ -292,6 +328,7 @@ class HistoryViewModel(private val repository: HabitRepository) : ViewModel() {
 
         val stats = StreakCalculator.computeStats(habitCreated, records, events, today)
         val sinceText = habitCreated.format(DateTimeFormatter.ofPattern("d MMMM, yyyy"))
+        val heatmapData = com.example.badhabitcontrol.domain.analytics.HeatmapCalculator.computeHeatmap(events)
 
         HabitDetailUiState(
             habit = habit,
@@ -299,6 +336,7 @@ class HistoryViewModel(private val repository: HabitRepository) : ViewModel() {
             sinceText = sinceText,
             recordsByDate = recordMap,
             events = events,
+            heatmapData = heatmapData,
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HabitDetailUiState())

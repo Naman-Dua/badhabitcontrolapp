@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Bad Habit Control</string>
+    <string name="widget_name">Habit Streak &amp; Urge</string>
+    <string name="widget_description">Shows your clean streak with a 1-tap urge button.</string>
 </resources>

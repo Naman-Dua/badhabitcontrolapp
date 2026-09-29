@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.badhabitcontrol.ui.components.CalendarView
+import com.example.badhabitcontrol.ui.components.HeatmapView
 import com.example.badhabitcontrol.ui.theme.CalmBackground
 import com.example.badhabitcontrol.ui.theme.CalmBorder
 import com.example.badhabitcontrol.ui.theme.CalmSurface
@@ -115,6 +116,11 @@ fun HistoryScreen(
 
         // Calendar
         CalendarView(recordsByDate = state.recordsByDate)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Heatmap
+        HeatmapView(data = state.heatmapData)
 
         Spacer(modifier = Modifier.height(24.dp))
 

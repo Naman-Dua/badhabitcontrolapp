@@ -40,6 +40,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.badhabitcontrol.ui.components.CalendarView
+import com.example.badhabitcontrol.ui.components.ConfigureFinancialDialog
+import com.example.badhabitcontrol.ui.components.FinancialImpactCard
 import com.example.badhabitcontrol.ui.theme.CalmBackground
 import com.example.badhabitcontrol.ui.theme.CalmBorder
 import com.example.badhabitcontrol.ui.theme.CalmSurface
@@ -59,6 +61,7 @@ fun HabitDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var showRelapseDialog by remember { mutableStateOf(false) }
+    var showFinancialConfigDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -144,6 +147,15 @@ fun HabitDetailScreen(
 
             // Calendar
             CalendarView(recordsByDate = state.recordsByDate)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Financial Impact
+            FinancialImpactCard(
+                config = state.financialConfig,
+                stats = state.financialStats,
+                onConfigureClick = { showFinancialConfigDialog = true }
+            )
 
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -232,6 +244,18 @@ fun HabitDetailScreen(
             },
             containerColor = CalmSurface,
             shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (showFinancialConfigDialog) {
+        ConfigureFinancialDialog(
+            initialConfig = state.financialConfig,
+            habitName = state.habit?.name ?: "Habit",
+            onSave = { newConfig ->
+                viewModel.updateFinancialConfig(newConfig)
+                showFinancialConfigDialog = false
+            },
+            onDismiss = { showFinancialConfigDialog = false }
         )
     }
 }

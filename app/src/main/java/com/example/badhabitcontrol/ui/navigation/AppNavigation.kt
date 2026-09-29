@@ -60,8 +60,17 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
 @Composable
 fun AppNavigation(
     repository: HabitRepository,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    directUrgeHabitId: Long? = null,
+    onUrgeHandled: () -> Unit = {}
 ) {
+    androidx.compose.runtime.LaunchedEffect(directUrgeHabitId) {
+        if (directUrgeHabitId != null && directUrgeHabitId > 0) {
+            navController.navigate(Screen.Urge.createRoute(directUrgeHabitId))
+            onUrgeHandled()
+        }
+    }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
